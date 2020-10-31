@@ -1,3 +1,30 @@
+# dev branch is where it's at
+
+## Fork of openpifpaf for control panel object detection 
+
+The data loader is located in `openpifpaf/openpifpaf/contrib/vispanel`
+
+The command to debug is: <br>
+```
+time CUDA_VISIBLE_DEVICES=0,1 python3 -m openpifpaf.train \
+  --lr=0.0001 --momentum=0.98 --b-scale=10.0 \
+  --epochs=150 \
+  --lr-decay 130 140 \
+  --lr-decay-epochs=10 \
+  --batch-size=32 \
+  --weight-decay=1e-5 \
+  --basenet=shufflenetv2k16w \
+  --dataset=vispanel \
+  --debug-images \
+  --save-all \
+  --debug-indices cifdet:0 \
+  --vispanel-upsample=2 \
+  --vispanel-square-edge=385
+  ```
+  
+  You should have a folder named `output` wherever you are executing the above command.
+
+
 # openpifpaf
 
 Continuously tested on Linux, MacOS and Windows: [![Build Status](https://travis-ci.org/vita-epfl/openpifpaf.svg?branch=master)](https://travis-ci.org/vita-epfl/openpifpaf)<br />
