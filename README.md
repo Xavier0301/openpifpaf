@@ -1,5 +1,3 @@
-# dev branch is where it's at
-
 ## Fork of openpifpaf for control panel object detection 
 
 The data loader is located in `openpifpaf/openpifpaf/contrib/vispanel`
