@@ -17,10 +17,23 @@ time CUDA_VISIBLE_DEVICES=0,1 python3 -m openpifpaf.train \
   --save-all \
   --debug-indices cifdet:0 \
   --vispanel-upsample=2 \
-  --vispanel-square-edge=385
-  ```
-  
-  You should have a folder named `output` wherever you are executing the above command.
+  --vispanel-square-edge=513
+```
+The command to train is: <br>
+``` 
+time CUDA_VISIBLE_DEVICES=0,1 python3 -m openpifpaf.train \
+  --lr=0.0001 --momentum=0.98 --b-scale=10.0 \
+  --epochs=150 \
+  --lr-decay 130 140 \
+  --lr-decay-epochs=10 \
+  --batch-size=32 \
+  --weight-decay=1e-5 \
+  --basenet=shufflenetv2k16w \
+  --dataset=vispanel \
+  --vispanel-upsample=2 \
+  --vispanel-square-edge=513
+```  
+You should have a folder named `output` wherever you are executing the above command.
 
 
 # openpifpaf
@@ -70,4 +83,3 @@ Continue to our __[OpenPifPaf Guide](https://vita-epfl.github.io/openpifpaf/intr
 # Commercial License
 
 This software is available for licensing via the EPFL Technology Transfer
-Office (https://tto.epfl.ch/, info.tto@epfl.ch).

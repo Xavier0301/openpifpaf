@@ -19,40 +19,60 @@ LOG = logging.getLogger(__name__)
 STAT_LOG = logging.getLogger(__name__.replace('openpifpaf.', 'openpifpaf.stats.'))
 
 class VisPanel(torch.utils.data.Dataset):
-
-    category_names = []
-    category_ids = []
-
-    cp_image_names = []
-    cp_image_ids = []
-
-    cp_annotations = []
-
     def load_cp_categories(self, annotations_dict):
         for category in annotations_dict[AnnotationFields.CATEGORIES]:
             self.category_names.append(category[AnnotationFields.CATEGORY_NAME])
             self.category_ids.append(category[AnnotationFields.CATEGORY_ID])
 
     def load_cp_images(self, annotations_dict):
+        self.cp_image_names = [None] * len(annotations_dict[AnnotationFields.IMAGES])
         for image in annotations_dict[AnnotationFields.IMAGES]:
-            self.cp_image_names.append(image[AnnotationFields.IMAGE_NAME])
-            self.cp_image_ids.append(image[AnnotationFields.IMAGE_ID])
+            self.cp_image_names[image[AnnotationFields.IMAGE_ID]-1] = image[AnnotationFields.IMAGE_NAME]
+        print("==========================================================================================")
+        print("==========================================================================================")
+        print("==========================================================================================")
+        for i, image_name in enumerate(self.cp_image_names):
+            print(f"image {i}: {image_name}")
+            print("___")
+        print("==========================================================================================")
+        print("==========================================================================================")
+        print("==========================================================================================")
 
     def load_cp_annotations(self, annotations_dict):
-        for image_id in self.cp_image_ids:
+        for it in self.cp_image_names:
             self.cp_annotations.append([])
         for annotation in annotations_dict[AnnotationFields.ANNOTATIONS]:
             img_index = annotation[AnnotationFields.ANNOTATION_IMAGE_ID] - 1
+            print(img_index)
 
             for field in AnnotationFields.ANNOTATION_FIELD_TO_DELETE:
                 del annotation[field]
 
             self.cp_annotations[img_index].append(annotation)
 
+        print("==========================================================================================")
+        print("==========================================================================================")
+        print("==========================================================================================")
+        for i, annotation in enumerate(self.cp_annotations):
+            print(f"image {i}: {len(annotation)} annotations")
+            print("___")
+        print("==========================================================================================")
+        print("==========================================================================================")
+        print("==========================================================================================")
+
     def __init__(self, cp_image_dir, coco_image_dir, annotation_file, *,
                  n_images=None, preprocess=None,
                  category_ids=None):
-        self.cp_images = glob.glob(os.path.join(cp_image_dir, "*.jpg"))
+        self.category_names = []
+        self.category_ids = []
+
+        self.cp_image_names = []
+        self.cp_image_ids = []
+
+        self.cp_annotations = []
+
+        self.cp_image_dir = cp_image_dir
+        # self.cp_images = glob.glob(os.path.join(cp_image_dir, "*.jpg"))
         self.coco_images = glob.glob(os.path.join(coco_image_dir, "*.jpg"))
 
         with open(annotation_file, 'r') as json_raw:
@@ -67,31 +87,21 @@ class VisPanel(torch.utils.data.Dataset):
 
     def scale_down_if_need(self, image, max_width, max_height):
         width, height = image.size
-        if(width > max_width):
-            ratio = max_width / width
-            new_height = int(ratio * height)
-            if(new_height <= max_height):
-                return image.resize((max_width, new_height)), ratio
+        ratio = min(max_width/width, max_height/height)
+        if ratio >= 1: 
+            return image, 1.0, 1.0
+        else:
+            new_width = int(ratio*width)
+            new_height = int(ratio*height)
+            return image.resize((new_width, new_height)), new_width/width, new_height/height
 
-        if(height > max_height):
-            ratio = max_height / height
-            new_width = int(ratio * width)
-            return image.resize((new_width, max_height)), ratio
+    def rescale_annotation(self, cp_annotation, x_ratio, y_ratio):
+        cp_annotation["bbox"][0] *= x_ratio
+        cp_annotation["bbox"][1] *= y_ratio
+        cp_annotation["bbox"][2] *= x_ratio
+        cp_annotation["bbox"][3] *= y_ratio
 
-        return image, 1.0
-
-    def rescale_annotation(self, cp_annotation, ratio):
-        w = cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_WIDTH]
-        h = cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_HEIGHT]
-
-        cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_WIDTH] = ratio*w
-        cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_HEIGHT] = ratio*h
-
-        x = cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_X]
-        y = cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_Y]
-
-        cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_X] = x*ratio
-        cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_Y] = y*ratio
+        cp_annotation["area"] = cp_annotation["bbox"][2] * cp_annotation["bbox"][3]
 
     def get_rand_offset(self, base_w, base_h, overlay_w, overlay_h):
         x_offset = random.uniform(0, base_w - overlay_w)
@@ -112,11 +122,26 @@ class VisPanel(torch.utils.data.Dataset):
         return background
 
     def adjust_annotation(self, cp_annotation, x_offset, y_offset):
-        x = cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_X]
-        y = cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_Y]
+        cp_annotation["bbox"][0] += x_offset
+        cp_annotation["bbox"][1] += y_offset
 
-        cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_X] = x + x_offset
-        cp_annotation[AnnotationFields.ANNOTATION_BBOX][AnnotationFields.ANNOTATION_BBOX_Y] = y + y_offset
+    def print_debug_infos(self, annotations, final_im, original_cp_im, coco_im, cp_im, x_offset, y_offset, x_ratio, y_ratio):
+        print("==========================================================================================")
+        print("==========================================================================================")
+        print("==========================================================================================")
+        print(f"""Image size: ${final_im.size}, background: ${coco_im.size}, foreground: ${cp_im.size} \n 
+                foreground at scale: ${original_cp_im.size} \n 
+                x_offset: ${x_offset}, y_offset: ${y_offset} \n 
+                x_ratio: ${x_ratio}, y_ratio: ${y_ratio}""")
+        print("==========================================================================================")
+        print("==========================================================================================")
+        print("==========================================================================================")
+        for i, annotation in enumerate(annotations):
+            print(f"$annotation {i} bbox: ${annotation['bbox']}")
+            print("________")
+        print("==========================================================================================")
+        print("==========================================================================================")
+        print("==========================================================================================")
 
     def __getitem__(self, index):
         """
@@ -126,10 +151,10 @@ class VisPanel(torch.utils.data.Dataset):
         Returns:
             tuple: Tuple (image, target). target is the object returned by ``coco.loadAnns``.
         """
-        coco_index = index // len(self.cp_images)
-        cp_index = index % len(self.cp_images)
+        coco_index = index // len(self.cp_image_names)
+        cp_index = index % len(self.cp_image_names)
 
-        cp_image_path = self.cp_images[cp_index]
+        cp_image_path = os.path.join(self.cp_image_dir, self.cp_image_names[cp_index])
         coco_image_path = self.coco_images[coco_index]
         with Image.open(cp_image_path) as f:
             cp_image = f.convert('RGB')
@@ -152,16 +177,19 @@ class VisPanel(torch.utils.data.Dataset):
         #     'cp_file_name': os.path.basename(cp_image_path),
         #     'coco_file_name': os.path.basename(coco_image_path),
         # }
+        initial_cp_image = cp_image
+        initial_coco_image = coco_image
 
         coco_width, coco_height = coco_image.size
-        cp_image, ratio = self.scale_down_if_need(cp_image, int(coco_width*0.9), int(coco_height*0.9))
+        cp_image, x_ratio, y_ratio = self.scale_down_if_need(cp_image, int(coco_width*0.7), int(coco_height*0.7))
 
         x_offset, y_offset = self.get_rand_offset_satisfying(coco_image, cp_image)
         image = self.overlay_image(coco_image, cp_image, x_offset, y_offset)
 
         anns = []
         for annotation in self.cp_annotations[cp_index]:
-            self.rescale_annotation(annotation, ratio)
+            annotation = copy.deepcopy(annotation)
+            self.rescale_annotation(annotation, x_ratio, y_ratio)
             self.adjust_annotation(annotation, x_offset, y_offset)
 
             # adding missing field
@@ -171,6 +199,8 @@ class VisPanel(torch.utils.data.Dataset):
 
             anns.append(annotation)
 
+        self.print_debug_infos(anns, image, initial_cp_image, initial_coco_image, cp_image, x_offset, y_offset, x_ratio, y_ratio)
+
         # preprocess image and annotations
         image, anns, meta = self.preprocess(image, anns, None)
         meta.update(meta_init)
@@ -178,11 +208,11 @@ class VisPanel(torch.utils.data.Dataset):
         # transform image
 
         # mask valid
-        valid_area = meta['valid_area']
-        utils.mask_valid_area(image, valid_area)
+        # valid_area = meta['valid_area']
+        # utils.mask_valid_area(image, valid_area)
 
         # if there are not target transforms, done here
-        LOG.debug(meta)
+        # LOG.debug(meta)
 
         # # log stats
         # for ann in anns:
@@ -196,4 +226,4 @@ class VisPanel(torch.utils.data.Dataset):
         return image, anns, meta
 
     def __len__(self):
-        return len(self.cp_images) * len(self.coco_images)
+        return len(self.cp_image_names) * len(self.coco_images)

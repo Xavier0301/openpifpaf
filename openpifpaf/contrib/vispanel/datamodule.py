@@ -9,9 +9,9 @@ from .vispanel import VisPanel
 from .constants import BBOX_KEYPOINTS, BBOX_HFLIP
 
 class VisPanelModule(openpifpaf.datasets.DataModule):
-    cp_image_dir = "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/visdrone/cp_dataset"
-    coco_image_dir = "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/visdrone/coco_dataset"
-    annotations_file = "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/visdrone/cp_dataset/cp_imgs_annotations_coco.json"
+    cp_image_dir = "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/cp_dataset"
+    coco_image_dir = "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/coco_dataset"
+    annotations_file = "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/cp_dataset/cp_imgs_annotations_coco.json"
 
     train_image_dir = cp_image_dir
     val_image_dir = cp_image_dir
@@ -21,8 +21,8 @@ class VisPanelModule(openpifpaf.datasets.DataModule):
     eval_annotations = val_annotations
     test_path = {
         'val': cp_image_dir, 
-        'test-dev': "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/visdrone/test_dev", 
-        'test-challenge': "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/visdrone/test_challenge"
+        'test-dev': "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/test_dev", 
+        'test-challenge': "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/test_challenge"
         }
     debug = False
     pin_memory = False
@@ -38,7 +38,7 @@ class VisPanelModule(openpifpaf.datasets.DataModule):
     eval_long_edge = None
     eval_orientation_invariant = 0.0
     eval_extended_scale = False
-    categories = ("square_button", "round_button")
+    categories = ["square_button", "round_button"]
     def __init__(self):
         super().__init__()
 
@@ -111,16 +111,16 @@ class VisPanelModule(openpifpaf.datasets.DataModule):
         cls.rescale_images = args.vispanel_rescale_images
         cls.upsample_stride = args.vispanel_upsample
 
-    @staticmethod
-    def _convert_data(parent_data, meta):
-        image, category_id = parent_data
+    # @staticmethod
+    # def _convert_data(parent_data, meta):
+    #     image, category_id = parent_data
 
-        anns = [{
-            'bbox': np.asarray([5, 5, 21, 21], dtype=np.float32),
-            'category_id': category_id + 1,
-        }]
+    #     anns = [{
+    #         'bbox': np.asarray([5, 5, 21, 21], dtype=np.float32),
+    #         'category_id': category_id + 1,
+    #     }]
 
-        return image, anns, meta
+    #     return image, anns, meta
 
     def _preprocess(self):
         enc = openpifpaf.encoder.CifDet(self.head_metas[0])
@@ -151,19 +151,39 @@ class VisPanelModule(openpifpaf.datasets.DataModule):
                 openpifpaf.transforms.RotateBy90(), self.orientation_invariant)
 
         return openpifpaf.transforms.Compose([
-            # openpifpaf.transforms.NormalizeAnnotations(),
-            # openpifpaf.transforms.AnnotationJitter(),
-            # openpifpaf.transforms.RandomApply(openpifpaf.transforms.HFlip(BBOX_KEYPOINTS, BBOX_HFLIP), 0.5),
-            # rescale_t,
-            # openpifpaf.transforms.Crop(self.square_edge, use_area_of_interest=True),
-            # openpifpaf.transforms.CenterPad(self.square_edge),
-            # orientation_t,
-            # openpifpaf.transforms.MinSize(min_side=4.0),
-            # openpifpaf.transforms.UnclippedArea(threshold=0.75),
-            # # transforms.UnclippedSides(),
+            openpifpaf.transforms.NormalizeAnnotations(),
+            openpifpaf.transforms.AnnotationJitter(),
+            openpifpaf.transforms.RandomApply(openpifpaf.transforms.HFlip(BBOX_KEYPOINTS, BBOX_HFLIP), 0.5),
+            rescale_t,
+            openpifpaf.transforms.Crop(self.square_edge, use_area_of_interest=True),
+            openpifpaf.transforms.CenterPad(self.square_edge),
+            orientation_t,
+            openpifpaf.transforms.MinSize(min_side=4.0),
+            openpifpaf.transforms.UnclippedArea(threshold=0.75),
+            # transforms.UnclippedSides(),
+            openpifpaf.transforms.RescaleAbsolute(self.square_edge),
+            openpifpaf.transforms.CenterPad(self.square_edge),
             openpifpaf.transforms.TRAIN_TRANSFORM,
             openpifpaf.transforms.Encoders([enc]),
         ])
+
+        # import pdb; pdb.set_trace()
+
+
+        # return openpifpaf.transforms.Compose([                
+        #     openpifpaf.transforms.NormalizeAnnotations(),                
+        #     openpifpaf.transforms.RandomApply(openpifpaf.transforms.HFlip(BBOX_KEYPOINTS, BBOX_HFLIP), 0.5),                
+        #     #rescale_t,                
+        #     openpifpaf.transforms.RescaleRelative(scale_range=(0.7 * self.rescale_images, 1.5 * self.rescale_images), absolute_reference=self.square_edge, power_law=True, stretch_range=(0.75, 1.33)),                
+        #     #openpifpaf.transforms.Crop(self.square_edge, use_area_of_interest=True),                
+        #     openpifpaf.transforms.CenterPad(self.square_edge),                
+        #     # orientation_t,                
+        #     #openpifpaf.transforms.MinSize(min_side=4.0),                
+        #     #openpifpaf.transforms.UnclippedArea(threshold=0.75),                
+        #     # transforms.UnclippedSides(),                
+        #     openpifpaf.transforms.TRAIN_TRANSFORM,                
+        #     openpifpaf.transforms.Encoders([enc]),            
+        # ])
 
     def train_loader(self):
         train_data = VisPanel(
