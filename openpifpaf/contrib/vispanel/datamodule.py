@@ -9,9 +9,9 @@ from .vispanel import VisPanel
 from .constants import BBOX_KEYPOINTS, BBOX_HFLIP
 
 class VisPanelModule(openpifpaf.datasets.DataModule):
-    cp_image_dir = "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/cp_dataset"
-    coco_image_dir = "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/coco_dataset"
-    annotations_file = "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/cp_dataset/cp_imgs_annotations_coco.json"
+    cp_image_dir = "./openpifpaf/openpifpaf/contrib/vispanel/cp_dataset"
+    coco_image_dir = "./openpifpaf/openpifpaf/contrib/vispanel/coco_dataset"
+    annotations_file = "./openpifpaf/openpifpaf/contrib/vispanel/cp_dataset/cp_imgs_annotations_coco.json"
 
     train_image_dir = cp_image_dir
     val_image_dir = cp_image_dir
@@ -21,8 +21,8 @@ class VisPanelModule(openpifpaf.datasets.DataModule):
     eval_annotations = val_annotations
     test_path = {
         'val': cp_image_dir, 
-        'test-dev': "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/test_dev", 
-        'test-challenge': "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/test_challenge"
+        'test-dev': "./openpifpaf/openpifpaf/contrib/vispanel/test_dev", 
+        'test-challenge': "./openpifpaf/openpifpaf/contrib/vispanel/test_challenge"
         }
     debug = False
     pin_memory = False
