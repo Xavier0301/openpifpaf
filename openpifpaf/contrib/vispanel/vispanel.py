@@ -28,37 +28,37 @@ class VisPanel(torch.utils.data.Dataset):
         self.cp_image_names = [None] * len(annotations_dict[AnnotationFields.IMAGES])
         for image in annotations_dict[AnnotationFields.IMAGES]:
             self.cp_image_names[image[AnnotationFields.IMAGE_ID]-1] = image[AnnotationFields.IMAGE_NAME]
-        print("==========================================================================================")
-        print("==========================================================================================")
-        print("==========================================================================================")
-        for i, image_name in enumerate(self.cp_image_names):
-            print(f"image {i}: {image_name}")
-            print("___")
-        print("==========================================================================================")
-        print("==========================================================================================")
-        print("==========================================================================================")
+        # print("==========================================================================================")
+        # print("==========================================================================================")
+        # print("==========================================================================================")
+        # for i, image_name in enumerate(self.cp_image_names):
+        #     print(f"image {i}: {image_name}")
+        #     print("___")
+        # print("==========================================================================================")
+        # print("==========================================================================================")
+        # print("==========================================================================================")
 
     def load_cp_annotations(self, annotations_dict):
         for it in self.cp_image_names:
             self.cp_annotations.append([])
         for annotation in annotations_dict[AnnotationFields.ANNOTATIONS]:
             img_index = annotation[AnnotationFields.ANNOTATION_IMAGE_ID] - 1
-            print(img_index)
+            # print(img_index)
 
             for field in AnnotationFields.ANNOTATION_FIELD_TO_DELETE:
                 del annotation[field]
 
             self.cp_annotations[img_index].append(annotation)
 
-        print("==========================================================================================")
-        print("==========================================================================================")
-        print("==========================================================================================")
-        for i, annotation in enumerate(self.cp_annotations):
-            print(f"image {i}: {len(annotation)} annotations")
-            print("___")
-        print("==========================================================================================")
-        print("==========================================================================================")
-        print("==========================================================================================")
+        # print("==========================================================================================")
+        # print("==========================================================================================")
+        # print("==========================================================================================")
+        # for i, annotation in enumerate(self.cp_annotations):
+        #     print(f"image {i}: {len(annotation)} annotations")
+        #     print("___")
+        # print("==========================================================================================")
+        # print("==========================================================================================")
+        # print("==========================================================================================")
 
     def __init__(self, cp_image_dir, coco_image_dir, annotation_file, *,
                  n_images=None, preprocess=None,
@@ -199,7 +199,7 @@ class VisPanel(torch.utils.data.Dataset):
 
             anns.append(annotation)
 
-        self.print_debug_infos(anns, image, initial_cp_image, initial_coco_image, cp_image, x_offset, y_offset, x_ratio, y_ratio)
+        # self.print_debug_infos(anns, image, initial_cp_image, initial_coco_image, cp_image, x_offset, y_offset, x_ratio, y_ratio)
 
         # preprocess image and annotations
         image, anns, meta = self.preprocess(image, anns, None)
