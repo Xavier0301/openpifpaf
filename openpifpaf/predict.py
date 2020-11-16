@@ -146,6 +146,9 @@ def out_name(arg, in_name, default_extension):
 def main():
     args = cli()
 
+    print("#"*100)
+    print(args)
+
     processor, model = processor_factory(args)
     preprocess = preprocess_factory(args)
 
