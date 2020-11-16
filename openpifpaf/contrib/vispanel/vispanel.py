@@ -245,6 +245,11 @@ class VisPanel(torch.utils.data.Dataset):
         xMin = min(newTopLeft[0], newBottomLeft[0])
         xMax = max(newTopRight[0], newBottomRight[0])
 
+        """
+        the min/max arguments should be the same given how the transform is implemented, 
+        but the following would be correct under any perspective transform,
+        not just the subset of transforms we are applying
+        """
         yMin = min(newTopLeft[1], newTopRight[1])
         yMax = max(newBottomLeft[1], newBottomRight[1])
 
