@@ -313,8 +313,8 @@ class VisPanel(torch.utils.data.Dataset):
             for annotation in self.cp_annotations[cp_index]:
                 annotation = copy.deepcopy(annotation)
                 self.perspective_transform_annotation(annotation, coefficients, image.size[1])
-                # self.rescale_annotation(annotation, x_ratio, y_ratio)
-                # self.shift_annotation(annotation, x_offset, y_offset)
+                self.rescale_annotation(annotation, x_ratio, y_ratio)
+                self.shift_annotation(annotation, x_offset, y_offset)
 
                 # adding missing field
                 annotation["keypoints"] = []
