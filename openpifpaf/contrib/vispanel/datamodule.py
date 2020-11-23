@@ -9,9 +9,9 @@ from .vispanel import VisPanel
 from .constants import BBOX_KEYPOINTS, BBOX_HFLIP
 
 class VisPanelModule(openpifpaf.datasets.DataModule):
-    cp_image_dir = "./openpifpaf/openpifpaf/contrib/vispanel/cp_dataset"
+    cp_image_dir = "./openpifpaf/openpifpaf/contrib/vispanel/fake_cp_dataset"
     coco_image_dir = "./openpifpaf/openpifpaf/contrib/vispanel/coco_dataset"
-    annotations_file = "./openpifpaf/openpifpaf/contrib/vispanel/cp_dataset/cp_imgs_annotations_coco.json"
+    annotations_file = "./openpifpaf/openpifpaf/contrib/vispanel/fake_cp_dataset/annotations.json"
 
     train_image_dir = cp_image_dir
     val_image_dir = cp_image_dir
