@@ -1,8 +1,12 @@
 import os
+import sys #for maxsize
 
 import glob
 import random
 import json
+
+import math # rotation cos, sin
+from operator import le, ge # to pass < and > as arg
 
 import copy
 import logging
@@ -10,7 +14,7 @@ import numpy as np
 import torch.utils.data
 from collections import defaultdict
 
-from PIL import Image
+from PIL import Image, ImageEnhance
 from openpifpaf import transforms, utils
 
 import cv2 as cv
@@ -51,7 +55,7 @@ class VisPanel(torch.utils.data.Dataset):
     """
     def __init__(self, cp_image_dir, coco_image_dir, annotation_file, *,
                  n_images=None, preprocess=None,
-                 category_ids=None, prediction=False, tmpDir=None):
+                 category_ids=None, prediction=False, tmpDir=None, randomSeed=None):
         self.category_names = []
         self.category_ids = []
 
@@ -77,6 +81,10 @@ class VisPanel(torch.utils.data.Dataset):
 
         self.prediction = prediction
         self.tmpDir = tmpDir
+
+        # used for having a reliable stack of transforms when testing
+        if randomSeed: 
+            random.seed(randomSeed)
 
     def scale_down_if_need(self, image, max_width, max_height):
         width, height = image.size
@@ -159,6 +167,26 @@ class VisPanel(torch.utils.data.Dataset):
         res = cv.cvtColor(cv_image, cv.COLOR_BGR2RGB)
         return Image.fromarray(res)
 
+    def color_transformed(self, image):
+        # Color
+        color_table = [(255,56,0), (255,109,0), (255,137,18), (255,161,72), (255,180,107), 
+            (255,196,137), (255,209,163), (255,219,186), (255,228,206), (255,236,224), 
+            (255,243,239), (255,249,253), (245,243,255), (235,238,255), (227,233,255), 
+            (220,229,255), (214,225,255), (208,222,255), (204,219,255)]
+
+        r, g, b = random.choice(color_table)
+        # We can do even weirder color change in the matrix.
+        matrix = ( r / 255.0, 0.0, 0.0, 0.0,
+                0.0, g / 255.0, 0.0, 0.0,
+                0.0, 0.0, b / 255.0, 0.0 )
+
+        image = image.convert('RGB', matrix)
+
+        # Brightness
+        factor = random.uniform(0.5, 1.5)
+        enhancer = ImageEnhance.Brightness(image)
+        return enhancer.enhance(factor)
+
     """ 
     Allows us to choose 4 pairs (image, preimage) in prespective transform 
     instead of obscure transformation coefficient
@@ -228,7 +256,7 @@ class VisPanel(torch.utils.data.Dataset):
 
     Given our implementation, y and height never change though.
     """
-    def perspective_transform_annotation(self, annotation, coeffs, height):
+    def perspective_transform_annotation(self, annotation, coeffs):
         bbox = annotation["bbox"]
         x = bbox[0]; y = bbox[1]; w = bbox[2]; h = bbox[3]
 
@@ -258,6 +286,104 @@ class VisPanel(torch.utils.data.Dataset):
         annotation["bbox"][2] = abs(xMax-xMin)
         annotation["bbox"][3] = abs(yMax-yMin)
 
+    """
+    Apply rotation to image and return the transformed image along with the chosen angle
+    """
+    def rotation_transformed(self, image):
+        width, height = image.size
+
+        angle = random.uniform(0, 360)
+
+        # print(f"angle: {angle}")
+
+        return image.rotate(angle, expand=True, resample=Image.NEAREST, fillcolor=(255,255,255,0)), angle, image.size
+
+    """
+    For any point (x,y), get the projection of the point under the rotation transform
+    """
+    def rotation_function(self, point, angle, size):
+        w, h = size
+        rotn_center = (w / 2.0, h / 2.0)
+
+        angle = math.radians(angle)
+        matrix = [
+            round(math.cos(angle), 15),
+            round(math.sin(angle), 15),
+            0.0,
+            round(-math.sin(angle), 15),
+            round(math.cos(angle), 15),
+            0.0,
+        ]
+
+        def transform(x, y, matrix):
+            (a, b, c, d, e, f) = matrix
+            return a * x + b * y + c, d * x + e * y + f
+
+        matrix[2], matrix[5] = transform(-rotn_center[0], -rotn_center[1], matrix)
+
+        matrix[2] += rotn_center[0]
+        matrix[5] += rotn_center[1]
+
+        # calculate output size to offset the new point after transform.
+        xx = []
+        yy = []
+        for x, y in ((0, 0), (w, 0), (w, h), (0, h)):
+            x, y = transform(x, y, matrix)
+            xx.append(x)
+            yy.append(y)
+        nw = math.ceil(max(xx)) - math.floor(min(xx))
+        nh = math.ceil(max(yy)) - math.floor(min(yy))
+
+        size_delta = (nw - w) / 2.0, (nh - h) / 2.0
+
+        mapsto = transform(point[0], point[1], matrix)
+        return mapsto[0] + size_delta[0], mapsto[1] + size_delta[1]
+
+    '''
+    Apply the rotation transform with param angle to an annotation.
+    In particular, we compute the largest bounding box which contains the mapped rectangle.
+    '''
+    def rotate_transform_annotation(self, annotation, angle, size):
+        def compPoints(points, index, compFun, coeff):
+            extremum = coeff*sys.maxsize
+            for point in points:
+                if(compFun(point[index], extremum)):
+                    extremum = point[index]
+            return extremum
+
+        def minPoints(points, index):
+            return compPoints(points, index, le, 1)
+
+        def maxPoints(points, index):
+            return compPoints(points, index, ge, -1)
+
+        bbox = annotation["bbox"]
+        x = bbox[0]; y = bbox[1]; w = bbox[2]; h = bbox[3]
+
+        topLeft = (x, y)
+        topRight = (x+w, y)
+        bottomLeft = (x, y+h)
+        bottomRight = (x+w, y+h)
+        
+        newTopLeft = self.rotation_function(topLeft, angle, size)
+        newTopRight = self.rotation_function(topRight, angle, size)
+        newBottomLeft = self.rotation_function(bottomLeft, angle, size)
+        newBottomRight = self.rotation_function(bottomRight, angle, size)
+
+        points = [newTopLeft, newTopRight, newBottomLeft, newBottomRight]
+
+        xMin = minPoints(points, 0)
+        yMin = minPoints(points, 1)
+
+        xMax = maxPoints(points, 0)
+        yMax = maxPoints(points, 1)
+
+        # print(f"x: {xMin}, y: {yMin}, w: {abs(xMax-xMin)}, h: {abs(yMax-yMin)}")
+
+        annotation["bbox"][0] = xMin
+        annotation["bbox"][1] = yMin
+        annotation["bbox"][2] = abs(xMax-xMin)
+        annotation["bbox"][3] = abs(yMax-yMin)
     """
     Args:
         index (int): Index
@@ -299,6 +425,8 @@ class VisPanel(torch.utils.data.Dataset):
         Of course, we keep the coefficients, ratio, offsets from each respective transform to apply them to each annotation later.
         """
         cp_image, coefficients = self.perspective_transformed(cp_image)
+        cp_image, angle, rot_size = self.rotation_transformed(cp_image)
+
         coco_width, coco_height = coco_image.size
         cp_image, x_ratio, y_ratio = self.scale_down_if_need(cp_image, int(coco_width*0.7), int(coco_height*0.7))
 
@@ -307,6 +435,7 @@ class VisPanel(torch.utils.data.Dataset):
 
         # We re translate later to RGB. (because the model works with 3 channels.)
         image = image.convert('RGB')
+        image = self.color_transformed(image)
 
         # easier debugging and prediction by saving the image to disk.
         if self.tmpDir is not None:
@@ -317,7 +446,8 @@ class VisPanel(torch.utils.data.Dataset):
         if not self.prediction:
             for annotation in self.cp_annotations[cp_index]:
                 annotation = copy.deepcopy(annotation)
-                self.perspective_transform_annotation(annotation, coefficients, image.size[1])
+                self.perspective_transform_annotation(annotation, coefficients)
+                self.rotate_transform_annotation(annotation, angle, rot_size)
                 self.rescale_annotation(annotation, x_ratio, y_ratio)
                 self.shift_annotation(annotation, x_offset, y_offset)
 

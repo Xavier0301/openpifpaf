@@ -5,7 +5,7 @@
     "distutils": {
         "depends": [],
         "include_dirs": [
-            "/Users/xavier/miniconda3/lib/python3.7/site-packages/numpy/core/include"
+            "/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/openpifpaf/openpifpaf/contrib/vispanel/video_env/lib/python3.9/site-packages/numpy/core/include"
         ],
         "name": "openpifpaf.functional",
         "sources": [
