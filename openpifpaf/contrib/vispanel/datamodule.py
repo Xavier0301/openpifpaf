@@ -151,29 +151,29 @@ class VisPanelModule(openpifpaf.datasets.DataModule):
             orientation_t = openpifpaf.transforms.RandomApply(
                 openpifpaf.transforms.RotateBy90(), self.orientation_invariant)
 
-        # return openpifpaf.transforms.Compose([
-        #     openpifpaf.transforms.NormalizeAnnotations(),
-        #     openpifpaf.transforms.AnnotationJitter(),
-        #     openpifpaf.transforms.RandomApply(openpifpaf.transforms.HFlip(BBOX_KEYPOINTS, BBOX_HFLIP), 0.5),
-        #     rescale_t,
-        #     openpifpaf.transforms.Crop(self.square_edge, use_area_of_interest=True),
-        #     openpifpaf.transforms.CenterPad(self.square_edge),
-        #     orientation_t,
-        #     openpifpaf.transforms.MinSize(min_side=4.0),
-        #     openpifpaf.transforms.UnclippedArea(threshold=0.75),
-        #     # transforms.UnclippedSides(),
-        #     openpifpaf.transforms.RescaleAbsolute(self.square_edge),
-        #     openpifpaf.transforms.CenterPad(self.square_edge),
-        #     openpifpaf.transforms.TRAIN_TRANSFORM,
-        #     openpifpaf.transforms.Encoders([enc]),
-        # ])
-
         return openpifpaf.transforms.Compose([
             openpifpaf.transforms.NormalizeAnnotations(),
-            # openpifpaf.transforms.AnnotationJitter(),
+            openpifpaf.transforms.AnnotationJitter(),
+            openpifpaf.transforms.RandomApply(openpifpaf.transforms.HFlip(BBOX_KEYPOINTS, BBOX_HFLIP), 0.5),
+            rescale_t,
+            openpifpaf.transforms.Crop(self.square_edge, use_area_of_interest=True),
+            openpifpaf.transforms.CenterPad(self.square_edge),
+            orientation_t,
+            openpifpaf.transforms.MinSize(min_side=4.0),
+            openpifpaf.transforms.UnclippedArea(threshold=0.75),
+            # transforms.UnclippedSides(),
+            openpifpaf.transforms.RescaleAbsolute(self.square_edge),
+            openpifpaf.transforms.CenterPad(self.square_edge),
             openpifpaf.transforms.TRAIN_TRANSFORM,
             openpifpaf.transforms.Encoders([enc]),
         ])
+
+        # return openpifpaf.transforms.Compose([
+        #     openpifpaf.transforms.NormalizeAnnotations(),
+        #     # openpifpaf.transforms.AnnotationJitter(),
+        #     openpifpaf.transforms.TRAIN_TRANSFORM,
+        #     openpifpaf.transforms.Encoders([enc]),
+        # ])
 
     def train_loader(self):
         train_data = VisPanel(
