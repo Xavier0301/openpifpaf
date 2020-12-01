@@ -94,7 +94,7 @@ class VisPanel(torch.utils.data.Dataset):
         else:
             new_width = int(ratio*width)
             new_height = int(ratio*height)
-            return image.resize((new_width, new_height)), new_width/width, new_height/height
+            return image.resize((new_width, new_height), resample=Image.ANTIALIAS), new_width/width, new_height/height
 
     def rescale_annotation(self, cp_annotation, x_ratio, y_ratio):
         cp_annotation["bbox"][0] *= x_ratio
@@ -167,20 +167,20 @@ class VisPanel(torch.utils.data.Dataset):
         res = cv.cvtColor(cv_image, cv.COLOR_BGR2RGB)
         return Image.fromarray(res)
 
+    def shift_hue(self, image, delta_hue):
+        width, height = image.size
+        image = image.convert('HSV')
+
+        for x in range(width):
+            for y in range(height):
+                hue, saturation, value = image.getpixel((x,y))      
+                image.putpixel((x,y), ((hue + delta_hue)%255, saturation, value))
+
+        return image.convert('RGB')
+
     def color_transformed(self, image):
-        # Color
-        color_table = [(255,56,0), (255,109,0), (255,137,18), (255,161,72), (255,180,107), 
-            (255,196,137), (255,209,163), (255,219,186), (255,228,206), (255,236,224), 
-            (255,243,239), (255,249,253), (245,243,255), (235,238,255), (227,233,255), 
-            (220,229,255), (214,225,255), (208,222,255), (204,219,255)]
-
-        r, g, b = random.choice(color_table)
-        # We can do even weirder color change in the matrix.
-        matrix = ( r / 255.0, 0.0, 0.0, 0.0,
-                0.0, g / 255.0, 0.0, 0.0,
-                0.0, 0.0, b / 255.0, 0.0 )
-
-        image = image.convert('RGB', matrix)
+        delta_hue = random.randint(0, 255)
+        image = self.shift_hue(image, delta_hue)
 
         # Brightness
         factor = random.uniform(0.5, 1.5)
@@ -230,7 +230,7 @@ class VisPanel(torch.utils.data.Dataset):
         # print(choice)
         # print(k1, k2)
 
-        res = image.transform((width, height), Image.PERSPECTIVE, coeffs, Image.NEAREST, fillcolor=(255,255,255,0))
+        res = image.transform((width, height), Image.PERSPECTIVE, coeffs, Image.BICUBIC, fillcolor=(255,255,255,0))
         return res, inv_coeffs
 
     """
@@ -296,7 +296,7 @@ class VisPanel(torch.utils.data.Dataset):
 
         # print(f"angle: {angle}")
 
-        return image.rotate(angle, expand=True, resample=Image.NEAREST, fillcolor=(255,255,255,0)), angle, image.size
+        return image.rotate(angle, expand=True, resample=Image.BICUBIC, fillcolor=(255,255,255,0)), angle, image.size
 
     """
     For any point (x,y), get the projection of the point under the rotation transform
