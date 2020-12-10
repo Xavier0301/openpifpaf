@@ -167,20 +167,42 @@ class VisPanel(torch.utils.data.Dataset):
         res = cv.cvtColor(cv_image, cv.COLOR_BGR2RGB)
         return Image.fromarray(res)
 
-    def shift_hue(self, image, delta_hue):
-        width, height = image.size
-        image = image.convert('HSV')
+    def noise_transformed(self, image):
+        def add_noise_at(x, y, std=5):
+            def add_noise(v):
+                val = int(v+random.normalvariate(0,std))
+                return min(max(0, val), 255)
+            
+            r, g, b, a = image.getpixel((x,y))
+            r = add_noise(r)
+            g = add_noise(g)
+            b = add_noise(b)
+            image.putpixel((x,y), (r, g, b))
 
-        for x in range(width):
-            for y in range(height):
-                hue, saturation, value = image.getpixel((x,y))      
-                image.putpixel((x,y), ((hue + delta_hue)%255, saturation, value))
+        if random.choice([True, False]):
+            std = random.uniform(10, 100)
+            w, h = image.size
+            for x in range(w):
+                for y in range(h):
+                    add_noise_at(x, y, std=std)
 
-        return image.convert('RGB')
+        return image
+        
 
     def color_transformed(self, image):
+        def shift_hue(image, delta_hue):
+            width, height = image.size
+            image = image.convert('HSV')
+
+            for x in range(width):
+                for y in range(height):
+                    hue, saturation, value = image.getpixel((x,y))      
+                    image.putpixel((x,y), ((hue + delta_hue)%255, saturation, value))
+
+            return image.convert('RGB')
+
         delta_hue = random.randint(0, 255)
-        image = self.shift_hue(image, delta_hue)
+        image = shift_hue(image, delta_hue)
 
         # Brightness
         factor = random.uniform(0.5, 1.5)
@@ -410,9 +432,9 @@ class VisPanel(torch.utils.data.Dataset):
 
         meta_init = {
             'dataset_index': index,
-            'image_id': (cp_image_path, coco_image_path),
+            'image_id': index,
             'file_dir': cp_image_path,
-            'file_name': os.path.basename(cp_image_path),
+            'file_name': str(index) + os.path.basename(cp_image_path)
         }
 
         """
@@ -424,6 +446,8 @@ class VisPanel(torch.utils.data.Dataset):
 
         Of course, we keep the coefficients, ratio, offsets from each respective transform to apply them to each annotation later.
         """
+        cp_image = self.noise_transformed(cp_image)
+
         cp_image, coefficients = self.perspective_transformed(cp_image)
         cp_image, angle, rot_size = self.rotation_transformed(cp_image)
 
@@ -441,31 +465,29 @@ class VisPanel(torch.utils.data.Dataset):
         if self.tmpDir is not None:
             image.save(os.path.join(self.tmpDir, meta_init['file_name']))
 
+        meta_init['size'] = image.size
+
         anns = []
-        # if we are doing prediction, no need to bother with annotations.
-        if not self.prediction:
-            for annotation in self.cp_annotations[cp_index]:
-                annotation = copy.deepcopy(annotation)
-                self.perspective_transform_annotation(annotation, coefficients)
-                self.rotate_transform_annotation(annotation, angle, rot_size)
-                self.rescale_annotation(annotation, x_ratio, y_ratio)
-                self.shift_annotation(annotation, x_offset, y_offset)
+        # even if we are not doing prediction, we want ground truth for metrics.
+        for annotation in self.cp_annotations[cp_index]:
+            annotation = copy.deepcopy(annotation)
+            self.perspective_transform_annotation(annotation, coefficients)
+            self.rotate_transform_annotation(annotation, angle, rot_size)
+            self.rescale_annotation(annotation, x_ratio, y_ratio)
+            self.shift_annotation(annotation, x_offset, y_offset)
 
-                # adding missing field
-                annotation["keypoints"] = []
-                annotation["num_keypoints"] = 0
-                annotation["segmentation"] = []
+            # adding missing field
+            annotation["keypoints"] = []
+            annotation["num_keypoints"] = 0
+            annotation["segmentation"] = []
 
-                anns.append(annotation)
+            anns.append(annotation)
 
-            # self.print_debug_infos(anns, image, initial_cp_image, initial_coco_image, cp_image, x_offset, y_offset, x_ratio, y_ratio)
+        # self.print_debug_infos(anns, image, initial_cp_image, initial_coco_image, cp_image, x_offset, y_offset, x_ratio, y_ratio)
 
-            # preprocess image and annotations
-            image, anns, meta = self.preprocess(image, anns, None)
-            meta.update(meta_init)
-        else:
-            image, _, meta = self.preprocess(image, [], None)
-            meta.update(meta_init)
+        # preprocess image and annotations
+        image, anns, meta = self.preprocess(image, anns, None)
+        meta.update(meta_init)
 
         return image, anns, meta
 
