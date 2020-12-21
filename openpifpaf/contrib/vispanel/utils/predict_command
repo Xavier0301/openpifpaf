@@ -1,0 +1,1 @@
+python -m openpifpaf.predict /Users/xavier/Desktop/EPFL_Cours/Ici/ERC/image_prediction/im.jpg --checkpoint '/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/model.pkl' --image-output --seed-threshold 0.5

@@ -1,0 +1,16 @@
+time CUDA_VISIBLE_DEVICES=0,1 python3 -m openpifpaf.train \
+  --lr=0.0001 --momentum=0.98 --b-scale=10.0 \
+  --epochs=150 \
+  --lr-decay 130 140 \
+  --lr-decay-epochs=10 \
+  --batch-size=32 \
+  --weight-decay=1e-5 \
+  --basenet=shufflenetv2k16w \
+  --dataset=vispanel \
+  --debug-images \
+  --save-all \
+  --debug-indices cifdet:0 cifdet:1 \
+  --vispanel-upsample=2 \
+  --vispanel-square-edge=513
+
+shufflenetv2k16w-201029-143541-cifdet.pkl.log

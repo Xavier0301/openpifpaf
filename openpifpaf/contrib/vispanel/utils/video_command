@@ -1,0 +1,1 @@
+python -m openpifpaf.video --scale=0.3  --source /Users/xavier/Desktop/EPFL_Cours/Ici/ERC/video_prediction/first.mp4  --checkpoint '/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/models/vispanel-noise-epoch61.pkl' --video-output /Users/xavier/Desktop/EPFL_Cours/Ici/ERC/video_prediction/pred.mp4 --seed-threshold 0.2
