@@ -37,7 +37,6 @@ data/
 *.pl
 *.pl-*
 *.pl.*
-*.pkl
 *.pkl-*
 *.pkl.*
 *.log
