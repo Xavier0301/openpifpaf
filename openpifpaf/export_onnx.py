@@ -59,7 +59,7 @@ def apply(model, outfile, verbose=True, input_w=129, input_h=97):
 
     torch.onnx.export(
         model, dummy_input, outfile, verbose=verbose,
-        input_names=['input_batch'], output_names=['cif', 'caf'],
+        input_names=['input_batch'], output_names=['cifdet'],
         # keep_initializers_as_inputs=True,
         # opset_version=10,
         do_constant_folding=True,

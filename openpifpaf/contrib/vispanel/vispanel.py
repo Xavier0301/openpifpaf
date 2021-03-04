@@ -413,6 +413,7 @@ class VisPanel(torch.utils.data.Dataset):
         tuple: Tuple (image, annotations)
     """
     def __getitem__(self, index):
+        LOG.info("get item")
         # For ex, the first 3 images will have the same background
         coco_index = index // len(self.cp_image_names)
         cp_index = index % len(self.cp_image_names)
@@ -488,6 +489,9 @@ class VisPanel(torch.utils.data.Dataset):
         # preprocess image and annotations
         image, anns, meta = self.preprocess(image, anns, None)
         meta.update(meta_init)
+
+        LOG.info("image shape:")
+        LOG.info(image.shape)
 
         return image, anns, meta
 

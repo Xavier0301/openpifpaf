@@ -1,7 +1,5 @@
 import argparse
-import numpy as np
 import torch
-import torchvision
 
 import openpifpaf
 
@@ -241,8 +239,8 @@ class VisPanelModule(openpifpaf.datasets.DataModule):
             openpifpaf.transforms.EVAL_TRANSFORM,
         ])
 
-    def eval_loader(self):
-        eval_data = VisPanel(
+    def eval_data(self):
+        return VisPanel(
             cp_image_dir=self.val_image_dir,
             coco_image_dir=self.coco_image_dir,
             annotation_file=self.eval_annotations,
@@ -251,8 +249,8 @@ class VisPanelModule(openpifpaf.datasets.DataModule):
             category_ids=[],
         )
 
+    def eval_loader(self):
         return torch.utils.data.DataLoader(
-            eval_data, batch_size=self.batch_size, shuffle=False,
+            self.eval_data(), batch_size=self.batch_size, shuffle=False,
             pin_memory=self.pin_memory, num_workers=self.loader_workers, drop_last=False,
             collate_fn=openpifpaf.datasets.collate_images_anns_meta)
-

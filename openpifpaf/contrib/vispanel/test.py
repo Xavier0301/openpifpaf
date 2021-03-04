@@ -13,18 +13,18 @@ import glob
 
 import cv2 as cv
 
-device = torch.device('cpu')
-
 from openpifpaf import datasets, decoder, logger, network, plugins, metric, show, transforms, visualizer, annotation,__version__
 
 from torchvision import transforms as torchTransforms
 
-import pycocotools 
+from pycocotools import coco
 
 # from vispanel import VisPanel
 # from datamodule import VisPanelModule
-import vispanel 
-import datamodule
+from . import vispanel
+from . import datamodule
+
+device = torch.device('cpu')
 
 cp_image_dir = "./physical_cp_dataset"
 coco_image_dir = "./coco_dataset"
@@ -42,11 +42,12 @@ gt_tmp_dir = "./gt_tmp/"
 # decoder.utils.CifSeeds = 0.3 # u idiot
 
 class FromDir(torch.utils.data.Dataset):
-    def __init__(self, dir, preprocess=None):
-        self.dir = dir
+    def __init__(self, directory, n_images=None, preprocess=None):
+        self.directory = directory
         self.preprocess = preprocess or transforms.EVAL_TRANSFORM
+        self.n_images = n_images
 
-        with open(os.path.join(dir, "annotations.json"), 'r') as json_raw:
+        with open(os.path.join(directory, "annotations.json"), 'r') as json_raw:
             json_dict = json.load(json_raw)
             self.annotations = json_dict['annotations']
 
@@ -55,7 +56,7 @@ class FromDir(torch.utils.data.Dataset):
                 self.image_names[im_dict['id']-1] = im_dict['file_name'] 
 
     def __getitem__(self, index):
-        image_path = os.path.join(self.dir, self.image_names[index])
+        image_path = os.path.join(self.directory, self.image_names[index])
         with open(image_path, 'rb') as f:
             image = PIL.Image.open(f).convert('RGB')
 
@@ -70,17 +71,21 @@ class FromDir(torch.utils.data.Dataset):
         return image, anns, meta
 
     def __len__(self):
-        return len(self.image_names)
+        if self.n_images is not None:
+            return min(self.n_images, len(self.image_names))
+        else:
+            return len(self.image_names)
 
-def blockPrint():
+def block_print():
     sys.stdout = open(os.devnull, 'w')
 
-def enablePrint():
+def enable_print():
     sys.stdout = sys.__stdout__
 
 def get_processor():
-    model_name = 'vispanel-lr-small.pkl'
-    model_path = '/Users/xavier/Desktop/EPFL_Cours/Ici/ERC/object_detection/models/' + model_name
+    model_name = 'vispanel-noise-epoch80.pkl'
+    model_path = '/home/xplore/openpifpaf/openpifpaf/contrib/vispanel/models/' + model_name
+    print(model_path)
     model_cpu, _ = openpifpaf.network.factory(checkpoint=model_path)
     model = model_cpu.to(device)
 
@@ -117,8 +122,8 @@ def custom_data_loader(n_images, preprocess):
         train_data, batch_size=1, shuffle=False,
         pin_memory=False, collate_fn=datasets.collate_images_anns_meta)
 
-def generic_data_loader(dir, preprocess):
-    data = FromDir(dir, preprocess=preprocess)
+def generic_data_loader(dir, n_images, preprocess):
+    data = FromDir(dir, n_images=n_images, preprocess=preprocess)
 
     return torch.utils.data.DataLoader(
         data, batch_size=1, shuffle=False,
@@ -155,6 +160,10 @@ def collect(data_loader, file_name_indicator, open_image_dir, paint=False):
         for pred, ground_truths, meta, image in zip(pred_batch, gts_batch, meta_batch, image_tensors_batch):
             pred = preprocess.annotations_inverse(pred, meta) #array of annotations
 
+            print("preds:")
+            print(pred)
+            print(len(ground_truths))
+
             print(meta['dataset_index'])
             print(meta['file_name'])
 
@@ -171,7 +180,7 @@ def collect(data_loader, file_name_indicator, open_image_dir, paint=False):
                 image_name=meta['file_name'], 
                 anns=ground_truths)
 
-            pifpaf_cocoeval = metric.Coco(pycocotools.coco.COCO(gt_path), 
+            pifpaf_cocoeval = metric.Coco(coco.COCO(gt_path), 
                 max_per_image=10, 
                 category_ids=range(1, len(datamodule.VisPanelModule.categories)+1), 
                 iou_type='bbox')
@@ -210,12 +219,12 @@ def stats_aggregate(coco_stats):
     return aggregates
 
 def print_eval(data_loader, index, foreword, paint=False, open_image_dir=tmp_image_dir):
-    blockPrint()
+    # block_print()
 
     coco_stats = collect(data_loader, file_name_indicator=str(index), paint=paint, open_image_dir=open_image_dir)
     coco_stats = stats_aggregate(coco_stats)
 
-    enablePrint()
+    # enable_print()
 
     print()
     print("=== AGGREGATED RESULTS: " + foreword + " ===")
@@ -240,8 +249,12 @@ def print_eval(data_loader, index, foreword, paint=False, open_image_dir=tmp_ima
     print()
 
 preprocessor = get_preprocess()
-print_eval(custom_data_loader(10, preprocessor), index=0, foreword="from data loader", paint=True)
-print_eval(generic_data_loader(wild_images_dir, preprocessor), index=1, foreword="from images in the wild", paint=True, open_image_dir=wild_images_dir)
+# print_eval(custom_data_loader(10, preprocessor), index=0, foreword="from data loader", paint=True)
+print_eval(generic_data_loader(wild_images_dir, 1, preprocessor), 
+    index=0, 
+    foreword="from images in the wild", 
+    paint=True, 
+    open_image_dir=wild_images_dir)
 
 # def collect(data_loader):
 #     image_names = []

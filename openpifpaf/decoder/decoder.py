@@ -121,7 +121,7 @@ class Decoder:
             # remove debug_images to save time during pickle
             image_batch = [None for _ in fields_batch]
             gt_anns_batch = [None for _ in fields_batch]
-
+        
         LOG.debug('parallel execution with worker %s', self.worker_pool)
         start_decoder = time.perf_counter()
         result = self.worker_pool.starmap(

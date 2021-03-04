@@ -55,8 +55,8 @@ setup(
         'pysparkling',  # for log analysis
         'python-json-logger',
         'scipy',
-        'torch>=1.3.1',
-        'torchvision>=0.4',
+#        'torch>=1.3.1',
+#        'torchvision>=0.4',
         'pillow',
         'dataclasses; python_version<"3.7"',
     ],
@@ -79,13 +79,13 @@ setup(
         'test': [
             'nbval',
             'onnx',
-            'onnxruntime',
-            'onnx-simplifier>=0.2.9',
+#            'onnxruntime',
+#            'onnx-simplifier>=0.2.9',
             'pylint',
             'pycodestyle',
             'pytest',
-            'opencv-python',
-            'thop',
+            #'opencv-python',
+#            'thop',
         ],
         'train': [
             'matplotlib',  # required by pycocotools

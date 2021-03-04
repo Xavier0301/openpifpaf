@@ -12,5 +12,3 @@ time CUDA_VISIBLE_DEVICES=0,1 python3 -m openpifpaf.train \
   --debug-indices cifdet:0 cifdet:1 \
   --vispanel-upsample=2 \
   --vispanel-square-edge=513
-
-shufflenetv2k16w-201029-143541-cifdet.pkl.log
